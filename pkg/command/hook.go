@@ -23,11 +23,12 @@ import (
 // hookInput is the subset of the agent's hook payload enola reads. Unknown fields are
 // ignored, so the payload growing does not break the hook.
 type hookInput struct {
-	CWD string `json:"cwd"`
+	CWD            string `json:"cwd"`
+	StopHookActive bool   `json:"stop_hook_active"`
 }
 
-// stopHookOutput is the response shape for a Stop hook that wants to hand the model
-// something to act on without preventing it from finishing.
+// stopHookOutput is the response shape for a Stop hook that hands the model something
+// to act on. Returning it does not let the turn finish.
 type stopHookOutput struct {
 	HookSpecificOutput struct {
 		HookEventName     string `json:"hookEventName"`
@@ -72,6 +73,10 @@ func (r *Runner) Hook(ctx context.Context, args []string) {
 func (r *Runner) runStopHook(ctx context.Context) {
 	in, err := readHookInput()
 	if err != nil || in.CWD == "" {
+		return
+	}
+
+	if in.StopHookActive {
 		return
 	}
 
