@@ -23,20 +23,12 @@ import (
 // hookInput is the subset of the agent's hook payload enola reads. Unknown fields are
 // ignored, so the payload growing does not break the hook.
 type hookInput struct {
-	CWD string `json:"cwd"`
-	// StopHookActive is the harness saying "you already spoke, and this ask is the
-	// result of it". It is the only thing that tells a fresh stop apart from a loop
-	// this hook started, so runStopHook cannot be safe without reading it.
-	StopHookActive bool `json:"stop_hook_active"`
+	CWD            string `json:"cwd"`
+	StopHookActive bool   `json:"stop_hook_active"`
 }
 
 // stopHookOutput is the response shape for a Stop hook that hands the model something
-// to act on.
-//
-// Returning it does NOT let the turn finish. A Stop hook that answers at all is
-// telling the harness the agent is not done, so the agent acts on the context and is
-// asked again - which is why runStopHook has to recognise that second ask and stand
-// down. Advisory is a property of the LOOP, not of this struct.
+// to act on. Returning it does not let the turn finish.
 type stopHookOutput struct {
 	HookSpecificOutput struct {
 		HookEventName     string `json:"hookEventName"`
@@ -84,16 +76,6 @@ func (r *Runner) runStopHook(ctx context.Context) {
 		return
 	}
 
-	// A repeat ask, and standing down is the whole of the contract.
-	//
-	// The agent has already been handed this hook's verdict and has acted on it; the
-	// harness is now asking a second time whether the turn may end. Nothing in the
-	// repository changed in between, so grading again reaches the same verdict and
-	// says the same words, and the session stays pinned until the harness's block cap
-	// trips. Whatever enola found, it found on the first ask. It has nothing to add.
-	//
-	// This returns BEFORE gradeQuietly on purpose: a repeat ask must cost nothing,
-	// not merely stay quiet. The gate is a full snapshot of the tree.
 	if in.StopHookActive {
 		return
 	}
