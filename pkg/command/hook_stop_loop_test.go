@@ -114,3 +114,42 @@ func TestStopHook_GradesOnAFirstFire(t *testing.T) {
 		})
 	}
 }
+
+// TestReadHookInput_ReadsStopHookActive pins the field name. The guard is only as good
+// as the JSON tag: a payload whose flag never lands in the struct reads as a first ask
+// every time, and the loop comes back with every test above still passing.
+func TestReadHookInput_ReadsStopHookActive(t *testing.T) {
+	for _, tt := range []struct {
+		name    string
+		payload string
+		want    bool
+	}{
+		{"true", `{"cwd":"/tmp","stop_hook_active":true}`, true},
+		{"false", `{"cwd":"/tmp","stop_hook_active":false}`, false},
+		{"absent", `{"cwd":"/tmp"}`, false},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			stdin, err := os.CreateTemp(t.TempDir(), "payload-*.json")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := stdin.WriteString(tt.payload); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := stdin.Seek(0, io.SeekStart); err != nil {
+				t.Fatal(err)
+			}
+			prev := os.Stdin
+			os.Stdin = stdin
+			defer func() { os.Stdin = prev }()
+
+			in, err := readHookInput()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if in.StopHookActive != tt.want {
+				t.Errorf("StopHookActive = %v, want %v (payload %s)", in.StopHookActive, tt.want, tt.payload)
+			}
+		})
+	}
+}
