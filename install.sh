@@ -1,6 +1,6 @@
 #!/bin/sh
 # install.sh: install the latest enola release.
-# Usage: curl -fsSL https://raw.githubusercontent.com/zalom/enola/main/install.sh | sh
+# Usage: curl -fsSL https://raw.githubusercontent.com/enola-labs/enola/main/install.sh | sh
 #
 # POSIX sh on purpose, with no `set -o pipefail`. A piped script never honours its
 # own shebang: the `sh` on the right of the pipe runs it, and on Debian and Ubuntu
@@ -28,7 +28,7 @@ case "$ARCH" in
 esac
 
 # --- Fetch latest version ---
-VERSION="$(curl -fsSL https://api.github.com/repos/zalom/enola/releases/latest | grep '"tag_name"' | sed -E 's/.*"v([^"]+)".*/\1/')"
+VERSION="$(curl -fsSL https://api.github.com/repos/enola-labs/enola/releases/latest | grep '"tag_name"' | sed -E 's/.*"v([^"]+)".*/\1/')"
 if [ -z "$VERSION" ]; then
   echo "Failed to fetch latest version" >&2
   exit 1
@@ -37,8 +37,8 @@ fi
 BASE="enola-${VERSION}-${OS}-${ARCH}"
 ASSET="${BASE}.tar.gz"
 SHASUM="${BASE}.sha256"
-URL="https://github.com/zalom/enola/releases/download/v${VERSION}/${ASSET}"
-SUM_URL="https://github.com/zalom/enola/releases/download/v${VERSION}/${SHASUM}"
+URL="https://github.com/enola-labs/enola/releases/download/v${VERSION}/${ASSET}"
+SUM_URL="https://github.com/enola-labs/enola/releases/download/v${VERSION}/${SHASUM}"
 
 echo "==> Downloading enola v${VERSION} for ${OS}/${ARCH} ..."
 
@@ -48,7 +48,7 @@ trap 'rm -rf "$TMPDIR"' EXIT
 if ! curl -fsSL -o "$TMPDIR/$ASSET" "$URL"; then
   echo "No prebuilt binary for ${OS}/${ARCH} in enola v${VERSION}." >&2
   echo "See the available downloads at:" >&2
-  echo "  https://github.com/zalom/enola/releases/tag/v${VERSION}" >&2
+  echo "  https://github.com/enola-labs/enola/releases/tag/v${VERSION}" >&2
   exit 1
 fi
 curl -fsSL -o "$TMPDIR/$SHASUM" "$SUM_URL"
