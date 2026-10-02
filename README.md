@@ -16,7 +16,7 @@ You can ask that graph questions yourself, give it to your coding agent, or buil
 ## Try it
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/enola-labs/enola/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/zalom/enola/main/install.sh | sh
 ```
 
 Then point it at any repository you have checked out:
