@@ -43,6 +43,82 @@ func TestChildRepos_ImmediateRepositoriesOnly(t *testing.T) {
 	}
 }
 
+func TestIsFolderOfRepos(t *testing.T) {
+	tests := []struct {
+		name string
+		dirs []string
+		want bool
+	}{
+		{name: "empty"},
+		{name: "non-git project", dirs: []string{"src", "docs"}},
+		{name: "single checkout", dirs: []string{"apps/api/.git"}},
+		{name: "siblings", dirs: []string{"api/.git", "web/.git"}, want: true},
+		{name: "nested groups", dirs: []string{"apps/api/.git", "agents/worker/.git"}, want: true},
+		{name: "mixed depths", dirs: []string{"sites/.git", "apps/api/.git"}, want: true},
+		{name: "third level", dirs: []string{"references/forks/api/.git", "references/forks/web/.git"}, want: true},
+		{name: "repository root", dirs: []string{".git", "apps/api/.git", "apps/web/.git"}},
+		{name: "nested checkout belongs to parent", dirs: []string{"api/.git", "api/submodule/.git"}},
+		{name: "dependencies and fixtures", dirs: []string{"vendor/api/.git", "node_modules/web/.git", "testdata/example/.git", ".cache/worker/.git"}},
+		{name: "beyond search depth", dirs: []string{"a/b/c/api/.git", "a/b/c/web/.git"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			root := t.TempDir()
+			mkdirs(t, root, tt.dirs...)
+			if got := IsFolderOfRepos(root); got != tt.want {
+				t.Errorf("IsFolderOfRepos = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestIsFolderOfRepos_NestedWorktrees(t *testing.T) {
+	root := t.TempDir()
+	for _, name := range []string{"one", "two"} {
+		writeFile(t, filepath.Join(root, "worktrees", name, ".git"), "gitdir: /elsewhere/worktrees/"+name+"\n")
+	}
+	if !IsFolderOfRepos(root) {
+		t.Fatal("nested worktrees were not detected")
+	}
+}
+
+func TestIsFolderOfRepos_DoesNotFollowGroupingSymlinks(t *testing.T) {
+	root := t.TempDir()
+	outside := t.TempDir()
+	mkdirs(t, outside, "api/.git", "web/.git")
+	if err := os.Symlink(outside, filepath.Join(root, "linked")); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+	if IsFolderOfRepos(root) {
+		t.Fatal("followed a grouping symlink outside the workspace")
+	}
+}
+
+func TestHasNestedRepos_EntryBudget(t *testing.T) {
+	root := t.TempDir()
+	mkdirs(t, root, "apps/api/.git", "apps/web/.git")
+	if hasNestedRepos(root, 3, 2) {
+		t.Fatal("found both repositories after exhausting the entry budget")
+	}
+	if !hasNestedRepos(root, 3, 3) {
+		t.Fatal("did not find both repositories within the entry budget")
+	}
+}
+
+func TestIsFolderOfRepos_LinkedCheckouts(t *testing.T) {
+	root := t.TempDir()
+	outside := t.TempDir()
+	mkdirs(t, outside, "api/.git", "web/.git")
+	for _, name := range []string{"api", "web"} {
+		if err := os.Symlink(filepath.Join(outside, name), filepath.Join(root, name)); err != nil {
+			t.Skipf("symlinks unavailable: %v", err)
+		}
+	}
+	if !IsFolderOfRepos(root) {
+		t.Fatal("linked checkouts were not detected")
+	}
+}
+
 func TestFolded(t *testing.T) {
 	one := t.TempDir()
 	mkdirs(t, one, "api/.git", "docs")

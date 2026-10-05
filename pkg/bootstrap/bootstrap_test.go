@@ -472,6 +472,15 @@ func contains(ss []string, s string) bool {
 // quit did not end it. A folder's graph restores through its workspace receipt; its
 // own .enola is never loaded as one repository.
 func TestAutoLoadSnapshot_SkipsAFolderOfRepositories(t *testing.T) {
+	for _, repos := range [][]string{{"alpha", "beta"}, {"sites", "apps/alpha", "agents/beta"}} {
+		t.Run(repos[0], func(t *testing.T) {
+			testAutoLoadSkipsFolderOfRepositories(t, repos)
+		})
+	}
+}
+
+func testAutoLoadSkipsFolderOfRepositories(t *testing.T, repos []string) {
+	t.Helper()
 	t.Setenv("HOME", t.TempDir())
 
 	eng, cfg, err := bootstrap.NewEngine(bootstrap.Options{
@@ -482,7 +491,7 @@ func TestAutoLoadSnapshot_SkipsAFolderOfRepositories(t *testing.T) {
 	}
 
 	folder := t.TempDir()
-	for _, repo := range []string{"alpha", "beta"} {
+	for _, repo := range repos {
 		if err := os.MkdirAll(filepath.Join(folder, repo, ".git"), 0o755); err != nil {
 			t.Fatal(err)
 		}

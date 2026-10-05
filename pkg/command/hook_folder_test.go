@@ -34,9 +34,18 @@ func withHookPayload(t *testing.T, payload string, fn func()) {
 // .enola, and tens of GB of memory. In a folder of repositories they must do no work,
 // write no snapshot, and record why, so `doctor` can say so.
 func TestHooks_DoNothingInAFolderOfRepositories(t *testing.T) {
+	for _, repos := range [][]string{{"alpha", "beta"}, {"sites", "apps/alpha", "agents/beta"}, {"references/forks/alpha", "references/forks/beta"}} {
+		t.Run(repos[0], func(t *testing.T) {
+			testHooksSkipFolderOfRepositories(t, repos)
+		})
+	}
+}
+
+func testHooksSkipFolderOfRepositories(t *testing.T, repos []string) {
+	t.Helper()
 	t.Setenv("HOME", t.TempDir())
 	folder := t.TempDir()
-	for _, repo := range []string{"alpha", "beta"} {
+	for _, repo := range repos {
 		if err := os.MkdirAll(filepath.Join(folder, repo, ".git"), 0o755); err != nil {
 			t.Fatal(err)
 		}
