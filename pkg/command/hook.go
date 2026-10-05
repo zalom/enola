@@ -286,8 +286,7 @@ func (r *Runner) runSessionStartHook(ctx context.Context, args []string) {
 	if err != nil || in.CWD == "" || !isDirectory(in.CWD) {
 		return
 	}
-	// Decided here, not in the detached child, so a folder of repositories costs one
-	// directory read and no process at all.
+	// Check before spawning: a folder of repositories needs no baseline process.
 	if skipFolderOfRepos(r, in.CWD, hookstate.EventSessionStart) {
 		return
 	}

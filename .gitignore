@@ -39,3 +39,6 @@ go.work.sum
 # .idea/
 # .vscode/
 .DS_Store
+
+# Local architecture snapshots
+.enola/

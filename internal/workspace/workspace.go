@@ -87,13 +87,58 @@ func IsRepo(dir string) bool {
 	return err == nil
 }
 
-// IsFolderOfRepos reports whether dir is a folder of repositories rather than a
-// repository: not a git repository itself, and holding at least MinRepos that are. The
-// session hooks ask this, because they snapshot their directory as ONE repository
-// whatever config sits in it. Over a folder of every repository a user has, that was
-// hundreds of thousands of files per session start and again per graded turn.
+// IsFolderOfRepos detects collections for automatic hooks and snapshot restore.
+// Unlike ChildRepos, it also looks through grouping directories such as apps/ and
+// references/forks/. The search is bounded so the guard does not become another scan.
 func IsFolderOfRepos(dir string) bool {
-	return !IsRepo(dir) && len(ChildRepos(dir)) >= MinRepos
+	const maxDepth = 3
+	const maxEntries = 4096
+	return !IsRepo(dir) && hasNestedRepos(dir, maxDepth, maxEntries)
+}
+
+func hasNestedRepos(dir string, maxDepth, maxEntries int) bool {
+	type directory struct {
+		path  string
+		depth int
+	}
+	pending := []directory{{path: dir}}
+	found := 0
+	for len(pending) > 0 && maxEntries > 0 {
+		current := pending[0]
+		pending = pending[1:]
+		if current.depth >= maxDepth {
+			continue
+		}
+		f, err := os.Open(current.path)
+		if err != nil {
+			continue
+		}
+		entries, _ := f.ReadDir(maxEntries)
+		_ = f.Close()
+		maxEntries -= len(entries)
+		for _, entry := range entries {
+			name := entry.Name()
+			if strings.HasPrefix(name, ".") || name == "node_modules" || name == "vendor" || name == "testdata" {
+				continue
+			}
+			if !entry.IsDir() && entry.Type()&os.ModeSymlink == 0 {
+				continue
+			}
+			child := filepath.Join(current.path, name)
+			if IsRepo(child) {
+				found++
+				if found >= MinRepos {
+					return true
+				}
+				continue
+			}
+			// Count linked checkouts, but do not walk grouping symlinks or cycles.
+			if entry.IsDir() {
+				pending = append(pending, directory{path: child, depth: current.depth + 1})
+			}
+		}
+	}
+	return false
 }
 
 // Clusterable returns the child repositories enola indexes as a cluster when dir is given
